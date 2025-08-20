@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  ssl-monitor:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./sites.json:/app/sites.json
+      - ./config:/app/config
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    environment:
+      - TZ=Asia/Shanghai
+      - FLASK_APP=app.py
+      - FLASK_ENV=production

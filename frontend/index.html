@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSL证书监控系统</title>
+    <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./assets/icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="./assets/fonts/inter.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --success-color: #4cc9f0;
+            --warning-color: #f8961e;
+            --danger-color: #f72585;
+            --light-bg: #f8f9fa;
+            --dark-bg: #212529;
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --card-hover-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+        
+        body {
+            background-color: var(--light-bg);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stats-card {
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            border: none;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--card-hover-shadow);
+        }
+        
+        .stats-card .card-body {
+            padding: 1.25rem;
+        }
+        
+        .stats-icon {
+            font-size: 2rem;
+            margin-right: 1rem;
+        }
+        
+        .card {
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            border: none;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--card-hover-shadow);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, var(--secondary-color), #2d0b8a);
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            font-weight: 600;
+            padding: 1rem 1.25rem;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            font-weight: 500;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
+        
+        .status-badge {
+            padding: 0.3rem 0.75rem;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+        
+        .status-valid {
+            background-color: rgba(76, 201, 240, 0.15);
+            color: var(--success-color);
+        }
+        
+        .status-warning {
+            background-color: rgba(248, 150, 30, 0.15);
+            color: var(--warning-color);
+        }
+        
+        .status-critical {
+            background-color: rgba(247, 37, 133, 0.15);
+            color: var(--danger-color);
+        }
+        
+        .table {
+            font-size: 0.9rem;
+        }
+        
+        .table th {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            margin-right: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+        
+        .form-control, .input-group-text {
+            border-radius: 8px;
+        }
+        
+        .progress {
+            height: 8px;
+            border-radius: 4px;
+        }
+        
+        .toast {
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .domain-cell {
+            font-weight: 500;
+        }
+        
+        .url-cell {
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+        
+        .days-cell {
+            font-weight: 600;
+        }
+        
+        .search-container {
+            max-width: 300px;
+        }
+        
+        @media (max-width: 992px) {
+            .header {
+                padding: 1rem 0;
+            }
+            
+            .stats-container {
+                margin-bottom: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-0">
+                        <i class="bi bi-shield-lock me-2"></i>SSL证书监控系统
+                    </h1>
+                    <p class="mb-0 opacity-75">实时监控SSL证书状态，预防证书过期风险</p>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <span class="badge bg-light text-dark">
+                            <i class="bi bi-clock me-1"></i>自动刷新: <span id="lastUpdateTime">--:--:--</span>
+                        </span>
+                    </div>
+                    <button id="refreshBtn" class="refresh-btn" title="刷新数据">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- 统计卡片 -->
+        <div class="row stats-container">
+            <div class="col-md-3 mb-3">
+                <div class="stats-card bg-white">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="stats-icon text-primary">
+                            <i class="bi bi-globe"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">总网站</h6>
+                            <h3 class="mb-0" id="totalSites">0</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card bg-white">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="stats-icon text-success">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">正常</h6>
+                            <h3 class="mb-0" id="validSites">0</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card bg-white">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="stats-icon text-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">警告</h6>
+                            <h3 class="mb-0" id="warningSites">0</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card bg-white">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="stats-icon text-danger">
+                            <i class="bi bi-exclamation-octagon"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">危险</h6>
+                            <h3 class="mb-0" id="criticalSites">0</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-plus-circle me-2"></i>添加新网站</span>
+                    </div>
+                    <div class="card-body">
+                        <form id="addSiteForm">
+                            <div class="mb-3">
+                                <label class="form-label">网站名称</label>
+                                <input type="text" class="form-control" id="siteName" placeholder="例如：我的网站" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">网站URL</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">https://</span>
+                                    <input type="text" class="form-control" id="siteUrl" placeholder="example.com" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-plus-lg me-1"></i>添加网站
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-gear me-2"></i>系统配置</span>
+                    </div>
+                    <div class="card-body">
+                        <form id="configForm">
+                            <div class="mb-3">
+                        <label class="form-label">检查间隔（分钟）</label>
+                        <input type="number" class="form-control" id="checkInterval" min="1" value="60">
+                    </div>
+                            <div class="mb-3">
+                                <label class="form-label">告警阈值（天）</label>
+                                <input type="number" class="form-control" id="alertThreshold" min="1" value="30">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-save me-1"></i>保存配置
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-list-check me-2"></i>证书详情</span>
+                        <div class="search-container">
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="searchInput" class="form-control" placeholder="搜索网站...">
+                                <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 20%;">网站</th>
+                                        <th style="width: 25%;">URL</th>
+                                        <th style="width: 20%;">过期时间</th>
+                                        <th style="width: 15%;">剩余天数</th>
+                                        <th style="width: 20%;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="certTableBody">
+                                    <!-- 表格数据将通过API获取并填充 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast通知 -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto" id="toastTitle">通知</strong>
+                <small>刚刚</small>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+                操作成功完成
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let certificatesData = [];
+        let lastUpdateTime = new Date();
+        
+        // DOM加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化事件监听器
+            initEventListeners();
+            
+            // 首次加载数据
+            fetchCertificates();
+            
+            // 加载配置
+            loadConfig();
+        });
+        
+        // 初始化事件监听器
+        function initEventListeners() {
+            document.getElementById('addSiteForm').addEventListener('submit', handleAddSite);
+            document.getElementById('refreshBtn').addEventListener('click', fetchCertificates);
+            document.getElementById('searchBtn').addEventListener('click', filterCertificates);
+            document.getElementById('searchInput').addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    filterCertificates();
+                }
+            });
+            document.getElementById('configForm').addEventListener('submit', handleConfigSave);
+        }
+        
+        // 获取证书数据
+        function fetchCertificates() {
+            fetch('/api/certificates')
+                .then(response => response.json())
+                .then(data => {
+                    certificatesData = data;
+                    updateCertTable(data);
+                    updateStatusCounts(data);
+                    updateLastUpdateTime();
+                    showToast('成功', '数据已更新', 'success');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('错误', '获取证书数据失败', 'danger');
+                });
+        }
+        
+        // 更新证书表格
+        function updateCertTable(data) {
+            const tbody = document.getElementById('certTableBody');
+            tbody.innerHTML = '';
+            
+            if (data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <i class="bi bi-inbox fs-1 d-block mb-3 text-muted"></i>
+                            <p class="mb-0">暂无监控网站</p>
+                            <p class="small text-muted mb-0">请添加网站开始监控</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            data.forEach(cert => {
+                const row = document.createElement('tr');
+                
+                // 确定状态样式
+                let statusClass = '';
+                let statusText = '';
+                
+                if (cert.status === 'error') {
+                    statusClass = 'status-critical';
+                    statusText = '错误';
+                } else if (cert.days_left < 0) {
+                    statusClass = 'status-critical';
+                    statusText = '已过期';
+                } else if (cert.days_left <= 30) {
+                    statusClass = 'status-warning';
+                    statusText = '即将过期';
+                } else {
+                    statusClass = 'status-valid';
+                    statusText = '正常';
+                }
+                
+                // 格式化日期
+                const expireDate = cert.expire_date ? 
+                    new Date(cert.expire_date).toLocaleDateString('zh-CN') : 'N/A';
+                
+                row.innerHTML = `
+                    <td class="domain-cell">
+                        <div class="d-flex align-items-center">
+                            <div class="me-2">
+                                <i class="bi bi-globe-americas text-primary"></i>
+                            </div>
+                            <div>
+                                ${cert.name}
+                                <div class="small text-muted">${cert.issuer?.commonName || 'N/A'}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="url-cell">${cert.url}</td>
+                    <td>${expireDate}</td>
+                    <td class="days-cell">${cert.days_left !== undefined ? cert.days_left : 'N/A'}</td>
+                    <td>
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                        <button class="btn btn-sm btn-outline-warning action-btn" 
+                                onclick="testWeChatAlertForSite('${cert.name}', '${cert.url}', ${cert.days_left})" 
+                                title="测试企业微信告警">
+                            <i class="bi bi-bell"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger action-btn" 
+                                onclick="deleteSite('${cert.url}')" 
+                                title="删除网站">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        // 更新状态统计
+        function updateStatusCounts(data) {
+            const total = data.length;
+            let valid = 0;
+            let warning = 0;
+            let critical = 0;
+            
+            data.forEach(cert => {
+                if (cert.status === 'error' || cert.days_left < 0) {
+                    critical++;
+                } else if (cert.days_left <= 30) {
+                    warning++;
+                } else {
+                    valid++;
+                }
+            });
+            
+            document.getElementById('totalSites').textContent = total;
+            document.getElementById('validSites').textContent = valid;
+            document.getElementById('warningSites').textContent = warning;
+            document.getElementById('criticalSites').textContent = critical;
+        }
+        
+        // 更新最后更新时间
+        function updateLastUpdateTime() {
+            lastUpdateTime = new Date();
+            const timeString = lastUpdateTime.toLocaleTimeString('zh-CN');
+            document.getElementById('lastUpdateTime').textContent = timeString;
+        }
+        
+        // 添加新网站
+        function handleAddSite(e) {
+            e.preventDefault();
+            const siteName = document.getElementById('siteName').value.trim();
+            const siteUrl = document.getElementById('siteUrl').value.trim();
+            
+            if (!siteName || !siteUrl) {
+                showToast('添加失败', '请填写完整的网站信息', 'danger');
+                return;
+            }
+            
+            fetch('/api/sites', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: siteName,
+                    url: siteUrl
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast('添加成功', `网站 ${siteName} 已添加到监控列表`, 'success');
+                    document.getElementById('addSiteForm').reset();
+                    fetchCertificates();
+                } else {
+                    showToast('添加失败', '服务器返回错误', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('错误', '添加网站失败', 'danger');
+            });
+        }
+        
+        // 删除网站
+        function deleteSite(url) {
+            if (!confirm('确定要删除这个网站的监控吗？')) {
+                return;
+            }
+            
+            fetch(`/api/sites/${encodeURIComponent(url)}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast('删除成功', '网站已从监控列表中移除', 'success');
+                    fetchCertificates();
+                } else {
+                    showToast('删除失败', '服务器返回错误', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('错误', '删除网站失败', 'danger');
+            });
+        }
+        
+        // 搜索过滤
+        function filterCertificates() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#certTableBody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        
+        // 加载配置
+        function loadConfig() {
+            // 从后端API获取配置
+            fetch('/api/config')
+                .then(response => response.json())
+                .then(config => {
+                    document.getElementById('checkInterval').value = config.check_interval_minutes || 60;
+                    document.getElementById('alertThreshold').value = config.alert_threshold_days || 30;
+                })
+                .catch(error => {
+                    console.error('Error loading config:', error);
+                });
+        }
+        
+        // 保存配置
+        function handleConfigSave(e) {
+            e.preventDefault();
+            
+            const checkInterval = document.getElementById('checkInterval').value;
+            const alertThreshold = document.getElementById('alertThreshold').value;
+            
+            // 发送到后端API保存配置
+            fetch('/api/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    check_interval_minutes: parseInt(checkInterval),
+                    alert_threshold_days: parseInt(alertThreshold)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast('成功', '配置已保存', 'success');
+                } else {
+                    showToast('失败', '保存配置失败', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('错误', '保存配置时发生错误', 'danger');
+            });
+        }
+        
+        // 显示Toast通知
+        function showToast(title, message, type) {
+            const toast = document.getElementById('liveToast');
+            const toastTitle = document.getElementById('toastTitle');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            // 设置标题和消息
+            toastTitle.textContent = title;
+            toastMessage.textContent = message;
+            
+            // 设置样式
+            toast.className = 'toast'; // 重置类名
+            if (type === 'success') {
+                toast.classList.add('bg-success', 'text-white');
+            } else if (type === 'danger') {
+                toast.classList.add('bg-danger', 'text-white');
+            } else if (type === 'warning') {
+                toast.classList.add('bg-warning', 'text-dark');
+            }
+            
+            // 显示Toast
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+        }
+        
+        // 测试企业微信告警
+        function testWeChatAlert() {
+            // 显示正在发送告警的提示
+            showToast('提示', '正在发送测试告警...', 'warning');
+            
+            // 发送测试告警请求
+            fetch('/api/alert', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: '测试网站',
+                    url: 'https://test.example.com',
+                    days_left: 15
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('成功', '测试告警已发送，请在企业微信中查看', 'success');
+                } else {
+                    showToast('失败', '告警发送失败: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('错误', '发送测试告警时发生错误', 'danger');
+            });
+        }
+        
+        // 针对特定站点测试企业微信告警
+        function testWeChatAlertForSite(name, url, daysLeft) {
+            // 显示正在发送告警的提示
+            showToast('提示', `正在发送测试告警: ${name}...`, 'warning');
+            
+            // 发送测试告警请求
+            console.log('Sending alert request for:', { name, url, daysLeft });
+            fetch('/api/alert', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: name,
+                    url: url,
+                    days_left: daysLeft
+                })
+            })
+            .then(response => {
+                console.log('Alert response:', response);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Alert data:', data);
+                if (data.success) {
+                    showToast('成功', `测试告警已发送: ${name}，请在企业微信中查看`, 'success');
+                } else {
+                    showToast('失败', `告警发送失败: ${name} - ${data.message}`, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('错误', `发送测试告警时发生错误: ${name}`, 'danger');
+            });
+        }
+    </script>
+    <script src="./assets/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
